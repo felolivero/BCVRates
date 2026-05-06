@@ -1,250 +1,250 @@
-# Calculadora de Cambio Android - Design
+# Calculadora de Cambio Android - Diseno
 
-## Context
+## Contexto
 
-The project is an Android app for Venezuelan shoppers who need to compare payment options at checkout. Stores may quote one price for foreign currency payments, another price for bolivar payments at BCV, another for USDT/paralelo, and sometimes prices tied to euros. The app helps the buyer decide which payment method is cheapest in real terms.
+El proyecto es una app Android para compradores en Venezuela que necesitan comparar opciones de pago al momento de comprar. Algunos comercios pueden dar un precio para pagos en divisas, otro precio para pagos en bolivares a tasa BCV, otro para USDT/paralelo, y a veces precios asociados al euro. La app ayuda al comprador a decidir que metodo de pago le cuesta menos en terminos reales.
 
-The app will be built as an APK/AAB-first Android app using React Native and Expo. The first version will not require user accounts.
+La app se construira desde el inicio como una app Android orientada a APK/AAB usando React Native y Expo. La primera version no requerira cuentas de usuario.
 
-## Goals
+## Objetivos
 
-- Show current exchange rates for USD BCV/oficial, USD paralelo/USDT, EUR oficial, and EUR paralelo when available.
-- Let users maintain a manual cash USD rate because cash exchange rates are local and volatile.
-- Convert between USD, Bs, and EUR using the relevant rate.
-- Compare multiple store payment conditions and recommend the cheapest option.
-- Work gracefully with stale data or no connection by using local cache.
-- Use Supabase as the central cache/control layer for rates and DolarApi as the external rate source.
+- Mostrar tasas actuales para USD BCV/oficial, USD paralelo/USDT, EUR oficial y EUR paralelo cuando este disponible.
+- Permitir que el usuario mantenga una tasa manual de USD efectivo, porque esa tasa es local y volatil.
+- Convertir entre USD, Bs y EUR usando la tasa correspondiente.
+- Comparar varias condiciones de pago ofrecidas por un comercio y recomendar la opcion mas conveniente.
+- Funcionar correctamente con datos vencidos o sin conexion usando cache local.
+- Usar Supabase como capa central de cache/control de tasas y DolarApi como fuente externa.
 
-## Non-Goals For V1
+## Fuera Del Alcance De La V1
 
-- User accounts or login.
-- Personal purchase history synced to the cloud.
-- Paid features or subscriptions.
-- iOS release.
-- Complex merchant database, receipt scanning, or automatic OCR.
+- Cuentas de usuario o login.
+- Historial personal de compras sincronizado en la nube.
+- Funciones pagas o suscripciones.
+- Version para iOS.
+- Base de datos compleja de comercios, escaneo de recibos u OCR automatico.
 
-## Architecture
+## Arquitectura
 
-The system has three layers:
+El sistema tiene tres capas:
 
-1. Mobile app:
+1. App movil:
    - React Native + Expo.
-   - Android APK/AAB output.
-   - Local storage for cached rates, the manual cash rate, and simple preferences.
-   - Main calculator and rates screens.
+   - Salida Android APK/AAB.
+   - Almacenamiento local para tasas en cache, tasa manual de efectivo y preferencias simples.
+   - Pantallas principales de calculadora y tasas.
 
 2. Supabase:
-   - Stores current rates.
-   - Stores a basic historical record of rates.
-   - Provides an Edge Function named `refresh-rates` to fetch DolarApi and update the rates cache.
-   - Exposes public read access for rates with Row Level Security enabled.
-   - Does not store user-specific data in V1.
+   - Guarda las tasas actuales.
+   - Guarda un historico basico de tasas.
+   - Provee una Edge Function llamada `refresh-rates` para consultar DolarApi y actualizar el cache de tasas.
+   - Expone lectura publica segura para tasas con Row Level Security activado.
+   - No guarda datos especificos de usuarios en V1.
 
 3. DolarApi:
-   - External source for exchange rates.
-   - Current USD endpoints: `/v1/dolares/oficial` and `/v1/dolares/paralelo`.
-   - Current EUR endpoint: `/v1/euros`, which returns official and parallel euro rates.
-   - Historical endpoints exist but are not shown in the V1 UI.
+   - Fuente externa de tasas de cambio.
+   - Endpoints actuales de USD: `/v1/dolares/oficial` y `/v1/dolares/paralelo`.
+   - Endpoint actual de EUR: `/v1/euros`, que devuelve euro oficial y euro paralelo.
+   - Existen endpoints historicos, pero no se muestran en la interfaz de la V1.
 
-The app reads rates from Supabase first. Supabase is refreshed through the `refresh-rates` Edge Function, which is safe to call from the app because privileged keys remain server-side. If Supabase is unavailable, the app uses local cached rates. If no cache exists, the calculator still allows manual cash-rate calculations and clearly marks automatic rates as unavailable.
+La app lee primero las tasas desde Supabase. Supabase se actualiza mediante la Edge Function `refresh-rates`, que puede ser llamada de forma segura desde la app porque las claves privilegiadas se mantienen del lado servidor. Si Supabase no esta disponible, la app usa las tasas guardadas en cache local. Si no existe cache, la calculadora permite calculos que dependan solo de entradas manuales y marca claramente que las tasas automaticas no estan disponibles.
 
-## Rate Model
+## Modelo De Tasas
 
-Each rate record should include:
+Cada registro de tasa debe incluir:
 
-- `code`: stable identifier such as `usd_bcv`, `usd_parallel`, `eur_bcv`, `eur_parallel`.
-- `base_currency`: `USD` or `EUR`.
+- `code`: identificador estable, por ejemplo `usd_bcv`, `usd_parallel`, `eur_bcv`, `eur_parallel`.
+- `base_currency`: `USD` o `EUR`.
 - `quote_currency`: `VES`.
-- `value`: bolivars per base currency unit.
-- `source`: for example `dolarapi`.
-- `source_name`: user-facing label.
-- `source_updated_at`: timestamp reported by the upstream source.
-- `fetched_at`: timestamp when Supabase refreshed the rate.
+- `value`: bolivares por unidad de la moneda base.
+- `source`: por ejemplo `dolarapi`.
+- `source_name`: etiqueta visible para el usuario.
+- `source_updated_at`: fecha/hora reportada por la fuente externa.
+- `fetched_at`: fecha/hora en que Supabase actualizo la tasa.
 
-The manual cash USD rate is local to the device:
+La tasa manual de USD efectivo es local del dispositivo:
 
-- `cash_usd_rate`: bolivars per USD cash.
-- `updated_at`: local timestamp of the last user change.
+- `cash_usd_rate`: bolivares por USD efectivo.
+- `updated_at`: fecha/hora local del ultimo cambio hecho por el usuario.
 
-## Screens
+## Pantallas
 
-### Calculator
+### Calculadora
 
-The calculator uses a hybrid flow.
+La calculadora usa un flujo hibrido.
 
-The user starts with one amount:
+El usuario empieza con un monto:
 
 - `20 USD`
 - `15000 Bs`
 - `18 EUR`
 
-The user then chooses how to interpret that amount:
+Luego el usuario elige como interpretar ese monto:
 
 - USD divisas.
-- Bs at BCV.
-- Bs at paralelo/USDT.
+- Bs a BCV.
+- Bs a paralelo/USDT.
 - EUR.
-- USD cash using the manual cash rate.
+- USD efectivo usando la tasa manual.
 
-The user may add additional payment conditions from the store:
+El usuario puede agregar condiciones de pago adicionales ofrecidas por el comercio:
 
-- Price in divisas.
-- Price in Bs at BCV.
-- Price in Bs at paralelo/USDT.
-- Price in EUR.
-- Price using the manual cash USD rate.
+- Precio en divisas.
+- Precio en Bs a BCV.
+- Precio en Bs a paralelo/USDT.
+- Precio en EUR.
+- Precio usando tasa manual de USD efectivo.
 
-The result ranks all payment conditions from cheapest to most expensive and shows:
+El resultado ordena todas las condiciones de pago desde la mas barata hasta la mas cara y muestra:
 
-- Best payment option.
-- Equivalent cost in USD.
-- Equivalent cost in Bs.
-- Difference against the best option in Bs.
-- Difference against the best option as a percentage.
-- Warning when an option is materially inflated compared with the cheapest option.
+- Mejor opcion de pago.
+- Costo equivalente en USD.
+- Costo equivalente en Bs.
+- Diferencia contra la mejor opcion en Bs.
+- Diferencia contra la mejor opcion en porcentaje.
+- Advertencia cuando una opcion esta materialmente inflada frente a la opcion mas barata.
 
-### Rates
+### Tasas
 
-The rates screen shows:
+La pantalla de tasas muestra:
 
 - USD oficial/BCV.
 - USD paralelo/USDT.
 - EUR oficial.
-- EUR paralelo if available.
-- Manual USD cash rate.
-- Last update time for automatic rates.
-- Manual cash rate last edit time.
-- Refresh action.
-- Clear indicator when cached/stale data is being used.
+- EUR paralelo si esta disponible.
+- Tasa manual de USD efectivo.
+- Fecha/hora de ultima actualizacion de las tasas automaticas.
+- Fecha/hora de ultima edicion de la tasa manual de efectivo.
+- Accion para refrescar.
+- Indicador claro cuando se estan usando datos en cache o vencidos.
 
-The manual cash rate can be edited from this screen because it is likely to change before calculating.
+La tasa manual de efectivo se puede editar desde esta pantalla porque probablemente el usuario la ajustara antes de calcular.
 
-### Settings
+### Ajustes
 
-Settings include:
+Ajustes incluye:
 
-- Manual USD cash rate editing, also reachable from Rates.
-- Preferred display currency for result summaries.
-- Rate source information.
-- Clear local cache.
-- Legal/reference note: rates are informational and should be verified before paying.
+- Edicion de tasa manual de USD efectivo, tambien accesible desde Tasas.
+- Moneda preferida para mostrar resumenes de resultados.
+- Informacion de la fuente de tasas.
+- Limpiar cache local.
+- Nota legal/referencial: las tasas son informativas y deben verificarse antes de pagar.
 
-## Calculation Rules
+## Reglas De Calculo
 
-The app normalizes every option to a common equivalent cost in VES and USD.
+La app normaliza cada opcion a un costo equivalente comun en VES y USD.
 
-For amounts entered in USD:
+Para montos ingresados en USD:
 
-- Divisas USD: equivalent USD is the entered amount; VES depends on the selected comparison/display rate.
-- USD cash: VES equals USD amount multiplied by the manual cash rate.
+- USD divisas: el equivalente en USD es el monto ingresado; el equivalente en VES depende de la tasa seleccionada para comparacion/visualizacion.
+- USD efectivo: VES es igual al monto en USD multiplicado por la tasa manual de efectivo.
 
-For amounts entered in VES:
+Para montos ingresados en VES:
 
-- Bs at BCV: equivalent USD equals VES divided by USD BCV rate.
-- Bs at paralelo/USDT: equivalent USD equals VES divided by USD paralelo rate.
-- Bs at manual cash: equivalent USD equals VES divided by the manual cash rate.
+- Bs a BCV: el equivalente en USD es VES dividido entre la tasa USD BCV.
+- Bs a paralelo/USDT: el equivalente en USD es VES dividido entre la tasa USD paralelo.
+- Bs a tasa manual de efectivo: el equivalente en USD es VES dividido entre la tasa manual de efectivo.
 
-For amounts entered in EUR:
+Para montos ingresados en EUR:
 
-- Equivalent VES equals EUR amount multiplied by the selected EUR rate.
-- Equivalent USD can be derived by comparing the VES value against the relevant USD rate for display.
+- El equivalente en VES es el monto en EUR multiplicado por la tasa EUR seleccionada.
+- El equivalente en USD puede derivarse comparando ese valor en VES contra la tasa USD relevante para visualizacion.
 
-For comparison ranking:
+Para ordenar la comparacion:
 
-- The cheapest option is the one with the lowest equivalent VES cost.
-- Differences are calculated against the cheapest equivalent VES cost.
-- Percent difference equals `(option_cost - best_cost) / best_cost * 100`.
+- La opcion mas barata es la que tenga el menor costo equivalente en VES.
+- Las diferencias se calculan contra el costo equivalente en VES de la mejor opcion.
+- La diferencia porcentual es `(costo_opcion - costo_mejor_opcion) / costo_mejor_opcion * 100`.
 
-Decimal handling must accept comma and dot decimal separators.
+El manejo de decimales debe aceptar coma y punto decimal.
 
-## Data Refresh And Offline Behavior
+## Actualizacion De Datos Y Modo Offline
 
-Normal app start:
+Al iniciar normalmente:
 
-1. Load local cached rates immediately if present.
-2. Fetch current rates from Supabase.
-3. Update UI and local cache if Supabase returns valid rates.
-4. Show source update times.
+1. Cargar tasas en cache local de inmediato si existen.
+2. Consultar tasas actuales desde Supabase.
+3. Actualizar la interfaz y el cache local si Supabase devuelve tasas validas.
+4. Mostrar las fechas de actualizacion de las fuentes.
 
-Manual refresh:
+Al refrescar manualmente:
 
-1. Call the Supabase `refresh-rates` Edge Function.
-2. Fetch current rates from Supabase after the refresh completes.
-3. If refresh succeeds, update local cache.
-4. If refresh fails, keep current data and show a non-blocking error.
+1. Llamar la Edge Function `refresh-rates` de Supabase.
+2. Consultar las tasas actuales desde Supabase cuando termine el refresco.
+3. Si el refresco funciona, actualizar el cache local.
+4. Si el refresco falla, mantener los datos actuales y mostrar un error no bloqueante.
 
-Failure states:
+Estados de falla:
 
-- DolarApi failure: Supabase keeps the last valid rates.
-- Supabase failure: app uses local cache.
-- No local cache: app marks automatic rates unavailable and allows calculations that only need manual input.
-- Stale rates: app displays a clear stale-data indicator.
+- Si DolarApi falla: Supabase conserva las ultimas tasas validas.
+- Si Supabase falla: la app usa cache local.
+- Si no hay cache local: la app marca las tasas automaticas como no disponibles y permite calculos que solo necesiten datos manuales.
+- Si las tasas estan vencidas: la app muestra un indicador claro de datos vencidos.
 
-## Supabase Security
+## Seguridad En Supabase
 
-V1 uses public read access only for non-sensitive rates data.
+La V1 usa lectura publica solamente para datos de tasas no sensibles.
 
-Requirements:
+Requisitos:
 
-- Enable RLS on public tables.
-- Allow anonymous read access only to rates tables/views that are safe to expose.
-- Do not expose service-role keys in the app.
-- Use only public client keys in mobile app configuration.
-- Keep any privileged refresh mechanism outside the mobile client.
-- The `refresh-rates` Edge Function may be public-callable, but it must keep all privileged database writes server-side.
+- Activar RLS en las tablas publicas.
+- Permitir lectura anonima solo en tablas/vistas de tasas que sean seguras de exponer.
+- No exponer claves `service_role` dentro de la app.
+- Usar solo claves publicas del cliente en la configuracion movil.
+- Mantener cualquier mecanismo privilegiado de refresco fuera del cliente movil.
+- La Edge Function `refresh-rates` puede ser invocable publicamente, pero todas las escrituras privilegiadas a la base de datos deben permanecer del lado servidor.
 
-## Testing Strategy
+## Estrategia De Pruebas
 
-Core calculation tests:
+Pruebas de calculo principales:
 
-- USD to Bs using BCV.
-- Bs to USD using BCV.
-- USD to Bs using paralelo/USDT.
-- Bs to USD using paralelo/USDT.
-- EUR conversions.
-- Manual USD cash rate conversions.
-- Ranking multiple payment conditions.
-- Difference and percentage calculations.
+- USD a Bs usando BCV.
+- Bs a USD usando BCV.
+- USD a Bs usando paralelo/USDT.
+- Bs a USD usando paralelo/USDT.
+- Conversiones con EUR.
+- Conversiones con tasa manual de USD efectivo.
+- Ordenamiento de varias condiciones de pago.
+- Calculo de diferencias y porcentajes.
 
-Input tests:
+Pruebas de entrada:
 
-- Empty values.
-- Negative values.
-- Zero values.
-- Comma decimal separator.
-- Dot decimal separator.
-- Invalid text.
+- Valores vacios.
+- Valores negativos.
+- Valores en cero.
+- Separador decimal con coma.
+- Separador decimal con punto.
+- Texto invalido.
 
-State tests:
+Pruebas de estado:
 
-- Fresh rates from Supabase.
-- Cached rates when offline.
-- Stale rates warning.
-- Missing automatic rates.
-- Manual cash rate update persistence.
+- Tasas frescas desde Supabase.
+- Tasas en cache cuando no hay conexion.
+- Advertencia de tasas vencidas.
+- Tasas automaticas faltantes.
+- Persistencia de la tasa manual de efectivo.
 
-## Implementation Decisions
+## Decisiones De Implementacion
 
-- V1 uses a Supabase Edge Function named `refresh-rates` for DolarApi fetching and database updates.
-- V1 uses DolarApi endpoints `/v1/dolares/oficial`, `/v1/dolares/paralelo`, and `/v1/euros`.
-- V1 stores historical rates in Supabase for future use but does not show historical charts in the UI.
+- La V1 usa una Edge Function de Supabase llamada `refresh-rates` para consultar DolarApi y actualizar la base de datos.
+- La V1 usa los endpoints de DolarApi `/v1/dolares/oficial`, `/v1/dolares/paralelo` y `/v1/euros`.
+- La V1 guarda historico de tasas en Supabase para uso futuro, pero no muestra graficos historicos en la interfaz.
 
-## References
+## Referencias
 
-- DolarApi Venezuela docs: `https://dolarapi.com/docs/venezuela/`
-- DolarApi USD oficial endpoint: `https://ve.dolarapi.com/v1/dolares/oficial`
-- DolarApi USD paralelo endpoint: `https://ve.dolarapi.com/v1/dolares/paralelo`
-- DolarApi EUR endpoint docs: `https://dolarapi.com/docs/venezuela/operations/get-euros`
+- Documentacion de DolarApi Venezuela: `https://dolarapi.com/docs/venezuela/`
+- Endpoint DolarApi USD oficial: `https://ve.dolarapi.com/v1/dolares/oficial`
+- Endpoint DolarApi USD paralelo: `https://ve.dolarapi.com/v1/dolares/paralelo`
+- Documentacion del endpoint DolarApi EUR: `https://dolarapi.com/docs/venezuela/operations/get-euros`
 
-## Approved Direction
+## Direccion Aprobada
 
-The approved V1 direction is:
+La direccion aprobada para la V1 es:
 
-- Android app first.
+- App Android primero.
 - React Native + Expo.
-- Supabase as central rates cache and historical store.
-- DolarApi as upstream source.
-- No login in V1.
-- Hybrid calculator flow.
-- Dedicated Rates screen.
-- Manual device-local USD cash rate.
+- Supabase como cache central de tasas y almacenamiento historico.
+- DolarApi como fuente externa.
+- Sin login en V1.
+- Flujo hibrido de calculadora.
+- Pantalla dedicada de Tasas.
+- Tasa manual de USD efectivo local del dispositivo.
