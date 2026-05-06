@@ -20,9 +20,8 @@ function getRateValue(rates: ExchangeRate[], code: RateCode): number {
 
 function toVes(option: PaymentOptionInput, rates: ExchangeRate[], cashUsdRate: number): number {
   const handlers: Record<PaymentKind, () => number> = {
-    usd_divisas: () => option.amount * getRateValue(rates, "usd_parallel"),
     ves_bcv: () => option.amount,
-    ves_parallel: () => option.amount,
+    ves_usdt: () => option.amount,
     eur: () => option.amount * getRateValue(rates, "eur_bcv"),
     usd_cash: () => option.amount * cashUsdRate,
   };
@@ -43,7 +42,7 @@ export function comparePaymentOptions(
     return [];
   }
 
-  const displayUsdRate = getRateValue(rates, "usd_parallel");
+  const displayUsdRate = getRateValue(rates, "usdt_binance");
   const priced = options.map((option) => {
     const equivalentVes = toVes(option, rates, cashUsdRate);
 
@@ -88,7 +87,7 @@ export function simulateSellScenario(
     throw new Error("La tasa manual de divisas debe ser mayor a cero.");
   }
 
-  const usedRate = instrument === "divisas" ? cashUsdRate : getRateValue(rates, "usd_parallel");
+  const usedRate = instrument === "divisas" ? cashUsdRate : getRateValue(rates, "usdt_binance");
   const receivedVes = Number((usdAmount * usedRate).toFixed(2));
   const differenceVsBestVes = Number((receivedVes - bestEquivalentVes).toFixed(2));
 

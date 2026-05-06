@@ -1,6 +1,6 @@
 # App Cambio BCV
 
-App Android para comparar formas de pago en Venezuela usando tasas BCV, paralelo/USDT, euro y una tasa manual de USD efectivo.
+App Android para comparar formas de pago en Venezuela usando BCV, USDT (Binance), euro oficial y una tasa manual de USD efectivo.
 
 ## Estructura
 

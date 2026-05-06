@@ -11,7 +11,7 @@ type DolarApiRate = {
 };
 
 type RateUpsert = {
-  code: "usd_bcv" | "usd_parallel" | "eur_bcv" | "eur_parallel";
+  code: "usd_bcv" | "usdt_binance" | "eur_bcv";
   base_currency: "USD" | "EUR";
   quote_currency: "VES";
   value: number;
@@ -32,58 +32,72 @@ function assertRate(data: DolarApiRate, label: string) {
   }
 }
 
-async function fetchSingleRate(
-  code: RateUpsert["code"],
-  baseCurrency: RateUpsert["base_currency"],
-  url: string,
-  sourceName: string,
-): Promise<RateUpsert> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`DolarApi fallo: ${url}`);
-
-  const data = (await response.json()) as DolarApiRate;
-  assertRate(data, code);
+function mapEuroRate(data: DolarApiRate): RateUpsert {
+  assertRate(data, "eur_bcv");
 
   return {
-    code,
-    base_currency: baseCurrency,
-    quote_currency: "VES",
-    value: data.promedio,
-    source: "dolarapi",
-    source_name: sourceName,
-    source_updated_at: data.fechaActualizacion,
-    fetched_at: new Date().toISOString(),
-  };
-}
-
-function mapEuroRate(data: DolarApiRate, code: "eur_bcv" | "eur_parallel"): RateUpsert {
-  assertRate(data, code);
-
-  return {
-    code,
+    code: "eur_bcv",
     base_currency: "EUR",
     quote_currency: "VES",
     value: data.promedio,
     source: "dolarapi",
-    source_name: code === "eur_bcv" ? "Euro oficial" : "Euro paralelo",
+    source_name: "Euro oficial",
     source_updated_at: data.fechaActualizacion,
     fetched_at: new Date().toISOString(),
   };
 }
 
-async function fetchEuroRates(): Promise<RateUpsert[]> {
+async function fetchEuroRate(): Promise<RateUpsert> {
   const response = await fetch("https://ve.dolarapi.com/v1/euros");
   if (!response.ok) throw new Error("DolarApi fallo: https://ve.dolarapi.com/v1/euros");
 
   const data = (await response.json()) as DolarApiRate[];
   const official = data.find((item) => item.fuente.toLowerCase() === "oficial");
-  const parallel = data.find((item) => item.fuente.toLowerCase() === "paralelo");
 
-  if (!official || !parallel) {
-    throw new Error("No se encontraron euro oficial y euro paralelo en DolarApi.");
+  if (!official) {
+    throw new Error("No se encontro euro oficial en DolarApi.");
   }
 
-  return [mapEuroRate(official, "eur_bcv"), mapEuroRate(parallel, "eur_parallel")];
+  return mapEuroRate(official);
+}
+
+async function fetchUsdRates(): Promise<[RateUpsert, RateUpsert]> {
+  const response = await fetch("https://ve.dolarapi.com/v1/dolares");
+  if (!response.ok) throw new Error("DolarApi fallo: https://ve.dolarapi.com/v1/dolares");
+
+  const data = (await response.json()) as DolarApiRate[];
+  const official = data.find((item) => item.fuente.toLowerCase() === "oficial");
+  const usdt = data.find((item) => item.fuente.toLowerCase() !== "oficial");
+
+  if (!official || !usdt) {
+    throw new Error("No se encontraron las tasas USD necesarias en DolarApi.");
+  }
+
+  assertRate(official, "usd_bcv");
+  assertRate(usdt, "usdt_binance");
+
+  return [
+    {
+      code: "usd_bcv",
+      base_currency: "USD",
+      quote_currency: "VES",
+      value: official.promedio,
+      source: "dolarapi",
+      source_name: "Dolar oficial BCV",
+      source_updated_at: official.fechaActualizacion,
+      fetched_at: new Date().toISOString(),
+    },
+    {
+      code: "usdt_binance",
+      base_currency: "USD",
+      quote_currency: "VES",
+      value: usdt.promedio,
+      source: "dolarapi",
+      source_name: "USDT (Binance)",
+      source_updated_at: usdt.fechaActualizacion,
+      fetched_at: new Date().toISOString(),
+    },
+  ];
 }
 
 Deno.serve(async (request) => {
@@ -103,13 +117,15 @@ Deno.serve(async (request) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const [usdBcv, usdParallel, euroRates] = await Promise.all([
-      fetchSingleRate("usd_bcv", "USD", "https://ve.dolarapi.com/v1/dolares/oficial", "Dólar oficial BCV"),
-      fetchSingleRate("usd_parallel", "USD", "https://ve.dolarapi.com/v1/dolares/paralelo", "Dólar paralelo / USDT"),
-      fetchEuroRates(),
-    ]);
+    const [[usdBcv, usdtBinance], euroBcv] = await Promise.all([fetchUsdRates(), fetchEuroRate()]);
 
-    const rates = [usdBcv, usdParallel, ...euroRates];
+    const rates = [usdBcv, usdtBinance, euroBcv];
+    const { error: clearError } = await supabase.from("exchange_rates").delete().neq("code", "");
+
+    if (clearError) {
+      return Response.json({ error: clearError.message }, { status: 500, headers: corsHeaders });
+    }
+
     const { error: upsertError } = await supabase.from("exchange_rates").upsert(rates, { onConflict: "code" });
 
     if (upsertError) {

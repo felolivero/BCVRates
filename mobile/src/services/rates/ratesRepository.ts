@@ -2,7 +2,7 @@ import type { ExchangeRate } from "../../domain/money";
 import { seedRates } from "../../data/seedRates";
 import { getSupabaseClient } from "../supabase/client";
 import { loadRatesCache, saveRatesCache } from "./localRatesCache";
-import { mapRateRow, type ExchangeRateRow } from "./types";
+import { mapRateRow, normalizeRateCode, type ExchangeRateRow } from "./types";
 
 export type RatesLoadSource = "supabase" | "cache" | "seed";
 
@@ -12,9 +12,27 @@ export type RatesLoadResult = {
   message: string;
 };
 
+const supportedRateCodes = new Set(["usd_bcv", "usdt_binance", "eur_bcv"]);
+
+function normalizeCachedRates(rates: ExchangeRate[]) {
+  return rates
+    .map((rate) => {
+      const code = normalizeRateCode(rate.code);
+      if (!code) return null;
+      return {
+        ...rate,
+        code,
+        sourceName: code === "usdt_binance" ? "USDT (Binance)" : rate.sourceName,
+      };
+    })
+    .filter((rate): rate is ExchangeRate => Boolean(rate));
+}
+
 function fallbackResult(cached: ExchangeRate[], message: string): RatesLoadResult {
-  if (cached.length > 0) {
-    return { rates: cached, source: "cache", message };
+  const supportedCached = normalizeCachedRates(cached).filter((rate) => supportedRateCodes.has(rate.code));
+
+  if (supportedCached.length > 0) {
+    return { rates: supportedCached, source: "cache", message };
   }
 
   return { rates: seedRates, source: "seed", message };
@@ -34,7 +52,10 @@ export async function loadRates(): Promise<RatesLoadResult> {
     return fallbackResult(cached, error?.message ?? "No se pudieron cargar tasas desde Supabase.");
   }
 
-  const rates = (data as ExchangeRateRow[]).map(mapRateRow);
+  const rates = (data as ExchangeRateRow[])
+    .filter((row) => normalizeRateCode(row.code))
+    .map(mapRateRow)
+    .filter((rate) => supportedRateCodes.has(rate.code));
   await saveRatesCache(rates);
 
   return { rates, source: "supabase", message: "Tasas cargadas desde Supabase." };

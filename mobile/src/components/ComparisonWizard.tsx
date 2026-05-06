@@ -48,9 +48,9 @@ const offerConfigs: OfferConfig[] = [
   {
     key: "ves_usdt",
     title: "Bolivares USDT",
-    description: "Monto final en Bs a referencia Binance/paralela.",
+    description: "Monto final en Bs para pago con USDT/Binance.",
     placeholder: "17000",
-    paymentKind: "ves_parallel",
+    paymentKind: "ves_usdt",
     defaultValue: "17000",
   },
   {

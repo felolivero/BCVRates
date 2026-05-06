@@ -13,11 +13,11 @@ const rates: ExchangeRate[] = [
     fetchedAt: "2026-05-06T00:00:00Z",
   },
   {
-    code: "usd_parallel",
+    code: "usdt_binance",
     baseCurrency: "USD",
     quoteCurrency: "VES",
     value: 150,
-    sourceName: "Paralelo",
+    sourceName: "USDT (Binance)",
     sourceUpdatedAt: "2026-05-06T00:00:00Z",
     fetchedAt: "2026-05-06T00:00:00Z",
   },
@@ -30,27 +30,18 @@ const rates: ExchangeRate[] = [
     sourceUpdatedAt: "2026-05-06T00:00:00Z",
     fetchedAt: "2026-05-06T00:00:00Z",
   },
-  {
-    code: "eur_parallel",
-    baseCurrency: "EUR",
-    quoteCurrency: "VES",
-    value: 160,
-    sourceName: "EUR paralelo",
-    sourceUpdatedAt: "2026-05-06T00:00:00Z",
-    fetchedAt: "2026-05-06T00:00:00Z",
-  },
 ];
 
 describe("comparePaymentOptions", () => {
   it("ordena condiciones en VES por costo real", () => {
     const options: PaymentOptionInput[] = [
       { id: "bcv", label: "15000 Bs a BCV", amount: 15000, kind: "ves_bcv" },
-      { id: "parallel", label: "12000 Bs a paralelo", amount: 12000, kind: "ves_parallel" },
+      { id: "usdt", label: "12000 Bs a USDT", amount: 12000, kind: "ves_usdt" },
     ];
 
     const result = comparePaymentOptions(options, rates, 140);
 
-    expect(result[0].optionId).toBe("parallel");
+    expect(result[0].optionId).toBe("usdt");
     expect(result[0].isBest).toBe(true);
     expect(result[1].differenceVes).toBe(3000);
     expect(result[1].differencePercent).toBe(25);

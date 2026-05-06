@@ -1,13 +1,12 @@
 export type CurrencyCode = "USD" | "VES" | "EUR";
 
-export type RateCode = "usd_bcv" | "usd_parallel" | "eur_bcv" | "eur_parallel" | "usd_cash";
+export type RateCode = "usd_bcv" | "usdt_binance" | "eur_bcv" | "usd_cash";
 
 export type PaymentKind =
-  | "usd_divisas"
+  | "usd_cash"
   | "ves_bcv"
-  | "ves_parallel"
-  | "eur"
-  | "usd_cash";
+  | "ves_usdt"
+  | "eur";
 
 export type ExchangeRate = {
   code: RateCode;

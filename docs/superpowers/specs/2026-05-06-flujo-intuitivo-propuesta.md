@@ -66,7 +66,7 @@ Después de mostrar la mejor forma de pago, agregar un bloque opcional de simula
 Reglas de cálculo de la simulación:
 
 - Si selecciona **Divisas**: usar **tasa manual** configurada por el usuario.
-- Si selecciona **USDT (Binance)**: usar la **tasa automática USDT/paralelo** disponible en Tasas.
+- Si selecciona **USDT (Binance)**: usar la tasa automática de USDT disponible en Tasas.
 - Resultado mostrar:
   - "Recibirías aprox: X Bs"
   - "Diferencia vs pagar directo: Y Bs"
@@ -89,12 +89,12 @@ Así mantienes potencia sin complicar el flujo base.
 
 - Renombrar términos en toda la app:
   - **Divisas** = USD efectivo.
-  - **USDT (Binance)** = referencia de mercado para USDT/paralelo.
+  - **USDT (Binance)** = opcion de pago P2P.
 
 ## Estados vacíos y ayudas
 
 - Si no hay tasas actualizadas: mostrar banner no bloqueante "Usando última tasa guardada".
-- Tooltip junto a "paralelo/USDT": "Referencia de mercado no oficial".
+- Ayuda junto a "USDT (Binance)": "Opcion para pagos P2P".
 - Botón "Ver ejemplo" que precarga un caso real (20 USD, 15000 Bs, 17000 Bs).
 
 ## Implementación incremental sugerida
