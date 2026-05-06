@@ -52,6 +52,12 @@
         "projectId": "2c792d96-6540-4a4b-87c9-5fc8211b1550"
       }
     },
-    "owner": "feloliveros-organization"
+    "owner": "feloliveros-organization",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2c792d96-6540-4a4b-87c9-5fc8211b1550"
+    }
   }
 }
