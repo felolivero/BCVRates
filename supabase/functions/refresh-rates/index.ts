@@ -36,6 +36,7 @@ async function fetchSingleRate(
   code: RateUpsert["code"],
   baseCurrency: RateUpsert["base_currency"],
   url: string,
+  sourceName: string,
 ): Promise<RateUpsert> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`DolarApi fallo: ${url}`);
@@ -49,7 +50,7 @@ async function fetchSingleRate(
     quote_currency: "VES",
     value: data.promedio,
     source: "dolarapi",
-    source_name: data.nombre,
+    source_name: sourceName,
     source_updated_at: data.fechaActualizacion,
     fetched_at: new Date().toISOString(),
   };
@@ -64,7 +65,7 @@ function mapEuroRate(data: DolarApiRate, code: "eur_bcv" | "eur_parallel"): Rate
     quote_currency: "VES",
     value: data.promedio,
     source: "dolarapi",
-    source_name: data.nombre,
+    source_name: code === "eur_bcv" ? "Euro oficial" : "Euro paralelo",
     source_updated_at: data.fechaActualizacion,
     fetched_at: new Date().toISOString(),
   };
@@ -75,8 +76,8 @@ async function fetchEuroRates(): Promise<RateUpsert[]> {
   if (!response.ok) throw new Error("DolarApi fallo: https://ve.dolarapi.com/v1/euros");
 
   const data = (await response.json()) as DolarApiRate[];
-  const official = data.find((item) => item.nombre.toLowerCase().includes("oficial"));
-  const parallel = data.find((item) => item.nombre.toLowerCase().includes("paralelo"));
+  const official = data.find((item) => item.fuente.toLowerCase() === "oficial");
+  const parallel = data.find((item) => item.fuente.toLowerCase() === "paralelo");
 
   if (!official || !parallel) {
     throw new Error("No se encontraron euro oficial y euro paralelo en DolarApi.");
@@ -103,8 +104,8 @@ Deno.serve(async (request) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const [usdBcv, usdParallel, euroRates] = await Promise.all([
-      fetchSingleRate("usd_bcv", "USD", "https://ve.dolarapi.com/v1/dolares/oficial"),
-      fetchSingleRate("usd_parallel", "USD", "https://ve.dolarapi.com/v1/dolares/paralelo"),
+      fetchSingleRate("usd_bcv", "USD", "https://ve.dolarapi.com/v1/dolares/oficial", "Dólar oficial BCV"),
+      fetchSingleRate("usd_parallel", "USD", "https://ve.dolarapi.com/v1/dolares/paralelo", "Dólar paralelo / USDT"),
       fetchEuroRates(),
     ]);
 
