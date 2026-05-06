@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
+import { appColors } from "../theme/colors";
 
 type Option<T extends string> = {
   label: string;
@@ -12,6 +13,9 @@ type Props<T extends string> = {
 };
 
 export function SegmentedControl<T extends string>({ options, value, onChange }: Props<T>) {
+  const scheme = useColorScheme() === "dark" ? "dark" : "light";
+  const colors = appColors[scheme];
+
   return (
     <View style={styles.wrap}>
       {options.map((option) => {
@@ -21,8 +25,14 @@ export function SegmentedControl<T extends string>({ options, value, onChange }:
           <Pressable
             key={option.value}
             onPress={() => onChange(option.value)}
-            style={[styles.option, selected && styles.optionSelected]}>
-            <Text style={[styles.label, selected && styles.labelSelected]}>{option.label}</Text>
+            style={[
+              styles.option,
+              { borderColor: colors.strongBorder, backgroundColor: colors.surfaceMuted },
+              selected && { backgroundColor: colors.primary, borderColor: colors.primary },
+            ]}>
+            <Text style={[styles.label, { color: colors.mutedText }, selected && { color: colors.primaryText }]}>
+              {option.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -37,22 +47,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   option: {
-    borderColor: "#d1d5db",
     borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  optionSelected: {
-    backgroundColor: "#14532d",
-    borderColor: "#14532d",
-  },
   label: {
-    color: "#374151",
     fontSize: 14,
     fontWeight: "600",
-  },
-  labelSelected: {
-    color: "#ffffff",
   },
 });

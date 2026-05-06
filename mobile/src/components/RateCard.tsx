@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, useColorScheme, View } from "react-native";
+import { appColors } from "../theme/colors";
 
 type Props = {
   title: string;
@@ -7,36 +8,36 @@ type Props = {
 };
 
 export function RateCard({ title, value, updatedAt }: Props) {
+  const scheme = useColorScheme() === "dark" ? "dark" : "light";
+  const colors = appColors[scheme];
+
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.value}>{value.toFixed(2)} Bs</Text>
-      <Text style={styles.meta}>Actualizado: {new Date(updatedAt).toLocaleString("es-VE")}</Text>
+    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Text style={[styles.title, { color: colors.mutedText }]}>{title}</Text>
+      <Text style={[styles.value, { color: colors.text }]}>{value.toFixed(2)} Bs</Text>
+      <Text style={[styles.meta, { color: colors.softText }]}>
+        Actualizado: {new Date(updatedAt).toLocaleString("es-VE")}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
     borderRadius: 8,
     borderWidth: 1,
     gap: 6,
     padding: 16,
   },
   title: {
-    color: "#4b5563",
     fontSize: 14,
     fontWeight: "700",
   },
   value: {
-    color: "#111827",
     fontSize: 26,
     fontWeight: "800",
   },
   meta: {
-    color: "#6b7280",
     fontSize: 12,
   },
 });

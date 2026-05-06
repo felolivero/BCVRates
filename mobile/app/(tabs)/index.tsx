@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from "react-native";
 
 import { AlphaShell } from "../../src/components/AlphaShell";
 import { SegmentedControl } from "../../src/components/SegmentedControl";
 import { comparePaymentOptions } from "../../src/domain/calculator";
 import type { PaymentKind, PaymentOptionInput } from "../../src/domain/money";
 import { parseDecimalInput } from "../../src/domain/numberInput";
-import { seedRates } from "../../src/data/seedRates";
+import { useRates } from "../../src/hooks/useRates";
+import { appColors } from "../../src/theme/colors";
 
 const kindOptions: { label: string; value: PaymentKind }[] = [
   { label: "USD divisas", value: "usd_divisas" },
@@ -22,6 +23,8 @@ function buildLabel(amount: number, kind: PaymentKind) {
 }
 
 export default function CalculatorScreen() {
+  const scheme = useColorScheme() === "dark" ? "dark" : "light";
+  const colors = appColors[scheme];
   const [amount, setAmount] = useState("20");
   const [kind, setKind] = useState<PaymentKind>("usd_divisas");
   const [cashRate, setCashRate] = useState("140");
@@ -30,12 +33,13 @@ export default function CalculatorScreen() {
     { id: "seed-ves", label: "2500 - Bs a BCV", amount: 2500, kind: "ves_bcv" },
   ]);
   const [message, setMessage] = useState("");
+  const { rates, source, message: ratesMessage } = useRates();
 
   const parsedCashRate = parseDecimalInput(cashRate);
   const comparison = useMemo(() => {
     if (!parsedCashRate.ok || options.length === 0) return [];
-    return comparePaymentOptions(options, seedRates, parsedCashRate.value);
-  }, [options, parsedCashRate]);
+    return comparePaymentOptions(options, rates, parsedCashRate.value);
+  }, [options, parsedCashRate, rates]);
 
   const best = comparison[0];
 
@@ -66,48 +70,78 @@ export default function CalculatorScreen() {
     <AlphaShell
       title="Calculadora"
       subtitle="Agrega las condiciones que te dio el comercio y compara cual forma de pago conviene mas.">
-      <View style={styles.panel}>
-        <Text style={styles.label}>Monto</Text>
-        <TextInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" style={styles.input} />
+      <View style={[styles.sourcePanel, { backgroundColor: colors.infoSurface, borderColor: colors.infoBorder }]}>
+        <Text style={[styles.sourceTitle, { color: colors.infoText }]}>
+          Tasas: {source === "supabase" ? "Supabase" : source === "cache" ? "Cache" : "Alpha"}
+        </Text>
+        <Text style={[styles.sourceText, { color: colors.infoText }]}>{ratesMessage}</Text>
+      </View>
 
-        <Text style={styles.label}>Como interpretar el monto</Text>
+      <View style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.label, { color: colors.mutedText }]}>Monto</Text>
+        <TextInput
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="decimal-pad"
+          style={[
+            styles.input,
+            { backgroundColor: colors.surfaceMuted, borderColor: colors.strongBorder, color: colors.text },
+          ]}
+          placeholderTextColor={colors.softText}
+        />
+
+        <Text style={[styles.label, { color: colors.mutedText }]}>Como interpretar el monto</Text>
         <SegmentedControl options={kindOptions} value={kind} onChange={setKind} />
 
-        <Text style={styles.label}>Tasa USD efectivo</Text>
-        <TextInput value={cashRate} onChangeText={setCashRate} keyboardType="decimal-pad" style={styles.input} />
+        <Text style={[styles.label, { color: colors.mutedText }]}>Tasa USD efectivo</Text>
+        <TextInput
+          value={cashRate}
+          onChangeText={setCashRate}
+          keyboardType="decimal-pad"
+          style={[
+            styles.input,
+            { backgroundColor: colors.surfaceMuted, borderColor: colors.strongBorder, color: colors.text },
+          ]}
+          placeholderTextColor={colors.softText}
+        />
 
-        <Pressable style={styles.primaryButton} onPress={addOption}>
-          <Text style={styles.primaryButtonText}>Agregar condicion</Text>
+        <Pressable style={[styles.primaryButton, { backgroundColor: colors.primary }]} onPress={addOption}>
+          <Text style={[styles.primaryButtonText, { color: colors.primaryText }]}>Agregar condicion</Text>
         </Pressable>
-        {message ? <Text style={styles.message}>{message}</Text> : null}
+        {message ? <Text style={[styles.message, { color: colors.mutedText }]}>{message}</Text> : null}
       </View>
 
       {best ? (
-        <View style={styles.bestPanel}>
-          <Text style={styles.bestEyebrow}>Mejor opcion ahora</Text>
-          <Text style={styles.bestTitle}>{best.label}</Text>
-          <Text style={styles.bestText}>
+        <View style={[styles.bestPanel, { backgroundColor: colors.successSurface, borderColor: colors.successBorder }]}>
+          <Text style={[styles.bestEyebrow, { color: colors.successText }]}>Mejor opcion ahora</Text>
+          <Text style={[styles.bestTitle, { color: colors.successText }]}>{best.label}</Text>
+          <Text style={[styles.bestText, { color: colors.successText }]}>
             Equivale a {best.equivalentVes.toFixed(2)} Bs o {best.equivalentUsd.toFixed(2)} USD.
           </Text>
         </View>
       ) : null}
 
-      <View style={styles.panel}>
+      <View style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.rowBetween}>
-          <Text style={styles.sectionTitle}>Opciones comparadas</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Opciones comparadas</Text>
           <Pressable onPress={() => setOptions([])}>
-            <Text style={styles.clearText}>Limpiar</Text>
+            <Text style={[styles.clearText, { color: colors.dangerText }]}>Limpiar</Text>
           </Pressable>
         </View>
         {comparison.map((item) => (
-          <View key={item.optionId} style={styles.resultRow}>
+          <View key={item.optionId} style={[styles.resultRow, { borderTopColor: colors.border }]}>
             <View style={styles.resultMain}>
-              <Text style={styles.resultTitle}>{item.label}</Text>
-              <Text style={styles.resultMeta}>
+              <Text style={[styles.resultTitle, { color: colors.text }]}>{item.label}</Text>
+              <Text style={[styles.resultMeta, { color: colors.softText }]}>
                 {item.equivalentVes.toFixed(2)} Bs · {item.equivalentUsd.toFixed(2)} USD
               </Text>
             </View>
-            <Text style={[styles.badge, item.isBest && styles.badgeBest]}>
+            <Text
+              style={[
+                styles.badge,
+                { backgroundColor: colors.surfaceMuted, color: colors.mutedText },
+                item.isBest && { backgroundColor: colors.primary, color: colors.primaryText },
+              ]}>
               {item.isBest ? "Mejor" : `+${item.differencePercent.toFixed(2)}%`}
             </Text>
           </View>
@@ -119,64 +153,50 @@ export default function CalculatorScreen() {
 
 const styles = StyleSheet.create({
   panel: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
     borderRadius: 8,
     borderWidth: 1,
     gap: 12,
     padding: 16,
   },
   label: {
-    color: "#374151",
     fontSize: 13,
     fontWeight: "800",
     textTransform: "uppercase",
   },
   input: {
-    backgroundColor: "#f9fafb",
-    borderColor: "#d1d5db",
     borderRadius: 8,
     borderWidth: 1,
-    color: "#111827",
     fontSize: 20,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#14532d",
     borderRadius: 8,
     paddingVertical: 14,
   },
   primaryButtonText: {
-    color: "#ffffff",
     fontSize: 16,
     fontWeight: "800",
   },
   message: {
-    color: "#4b5563",
   },
   bestPanel: {
-    backgroundColor: "#dcfce7",
-    borderColor: "#86efac",
     borderRadius: 8,
     borderWidth: 1,
     gap: 6,
     padding: 16,
   },
   bestEyebrow: {
-    color: "#166534",
     fontSize: 12,
     fontWeight: "800",
     textTransform: "uppercase",
   },
   bestTitle: {
-    color: "#052e16",
     fontSize: 22,
     fontWeight: "900",
   },
   bestText: {
-    color: "#166534",
     fontSize: 15,
   },
   rowBetween: {
@@ -185,17 +205,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   sectionTitle: {
-    color: "#111827",
     fontSize: 18,
     fontWeight: "800",
   },
   clearText: {
-    color: "#b91c1c",
     fontWeight: "700",
   },
   resultRow: {
     alignItems: "center",
-    borderTopColor: "#f3f4f6",
     borderTopWidth: 1,
     flexDirection: "row",
     gap: 12,
@@ -207,18 +224,14 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   resultTitle: {
-    color: "#111827",
     fontSize: 16,
     fontWeight: "800",
   },
   resultMeta: {
-    color: "#6b7280",
     fontSize: 13,
   },
   badge: {
-    backgroundColor: "#f3f4f6",
     borderRadius: 8,
-    color: "#374151",
     fontSize: 12,
     fontWeight: "800",
     overflow: "hidden",
@@ -226,7 +239,20 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   badgeBest: {
-    backgroundColor: "#14532d",
-    color: "#ffffff",
+  },
+  sourcePanel: {
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 4,
+    padding: 12,
+  },
+  sourceTitle: {
+    fontSize: 13,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  sourceText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
