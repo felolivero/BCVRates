@@ -1,2 +1,4 @@
 .superpowers/
 .worktrees/
+*.local.sql
+supabase/.temp/

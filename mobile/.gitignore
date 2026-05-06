@@ -29,6 +29,11 @@ yarn-error.*
 # Local dev logs
 expo-web*.log
 
+# Local environment
+.env
+.env.*
+!.env.example
+
 # macOS
 .DS_Store
 *.pem
