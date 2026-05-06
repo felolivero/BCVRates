@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { comparePaymentOptions } from "../domain/calculator";
+import { comparePaymentOptions, simulateSellScenario } from "../domain/calculator";
 import type { ExchangeRate, PaymentOptionInput } from "../domain/money";
 
 const rates: ExchangeRate[] = [
@@ -66,5 +66,23 @@ describe("comparePaymentOptions", () => {
 
     expect(result[0].optionId).toBe("bcv");
     expect(result[1].equivalentVes).toBe(2800);
+  });
+});
+
+describe("simulateSellScenario", () => {
+  it("usa tasa manual cuando se vende en Divisas", () => {
+    const result = simulateSellScenario(20, "divisas", rates, 140, 2500);
+
+    expect(result.usedRate).toBe(140);
+    expect(result.receivedVes).toBe(2800);
+    expect(result.differenceVsBestVes).toBe(300);
+  });
+
+  it("usa tasa usdt/binance cuando se vende USDT", () => {
+    const result = simulateSellScenario(20, "usdt_binance", rates, 140, 2500);
+
+    expect(result.usedRate).toBe(150);
+    expect(result.receivedVes).toBe(3000);
+    expect(result.differenceVsBestVes).toBe(500);
   });
 });
