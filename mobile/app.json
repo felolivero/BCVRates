@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Cambio BCV",
-    "slug": "cambio-bcv",
+    "slug": "cambiobcv",
     "version": "0.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -45,6 +45,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2c792d96-6540-4a4b-87c9-5fc8211b1550"
+      }
+    },
+    "owner": "feloliveros-organization"
   }
 }
