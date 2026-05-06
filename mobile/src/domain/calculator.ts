@@ -4,6 +4,8 @@ import type {
   PaymentKind,
   PaymentOptionInput,
   RateCode,
+  SellInstrument,
+  SellScenarioResult,
 } from "./money";
 
 function getRateValue(rates: ExchangeRate[], code: RateCode): number {
@@ -69,4 +71,32 @@ export function comparePaymentOptions(
       };
     })
     .sort((a, b) => a.equivalentVes - b.equivalentVes);
+}
+
+export function simulateSellScenario(
+  usdAmount: number,
+  instrument: SellInstrument,
+  rates: ExchangeRate[],
+  cashUsdRate: number,
+  bestEquivalentVes: number,
+): SellScenarioResult {
+  if (usdAmount <= 0) {
+    throw new Error("El monto en USD debe ser mayor a cero.");
+  }
+
+  if (cashUsdRate <= 0) {
+    throw new Error("La tasa manual de divisas debe ser mayor a cero.");
+  }
+
+  const usedRate = instrument === "divisas" ? cashUsdRate : getRateValue(rates, "usd_parallel");
+  const receivedVes = Number((usdAmount * usedRate).toFixed(2));
+  const differenceVsBestVes = Number((receivedVes - bestEquivalentVes).toFixed(2));
+
+  return {
+    instrument,
+    usdAmount: Number(usdAmount.toFixed(2)),
+    usedRate: Number(usedRate.toFixed(2)),
+    receivedVes,
+    differenceVsBestVes,
+  };
 }

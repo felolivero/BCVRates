@@ -3,18 +3,23 @@ import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from "re
 
 import { AlphaShell } from "../../src/components/AlphaShell";
 import { SegmentedControl } from "../../src/components/SegmentedControl";
-import { comparePaymentOptions } from "../../src/domain/calculator";
-import type { PaymentKind, PaymentOptionInput } from "../../src/domain/money";
+import { comparePaymentOptions, simulateSellScenario } from "../../src/domain/calculator";
+import type { PaymentKind, PaymentOptionInput, SellInstrument } from "../../src/domain/money";
 import { parseDecimalInput } from "../../src/domain/numberInput";
 import { useRates } from "../../src/hooks/useRates";
 import { appColors } from "../../src/theme/colors";
 
 const kindOptions: { label: string; value: PaymentKind }[] = [
-  { label: "USD divisas", value: "usd_divisas" },
+  { label: "Divisas", value: "usd_divisas" },
   { label: "Bs a BCV", value: "ves_bcv" },
-  { label: "Bs paralelo", value: "ves_parallel" },
+  { label: "Bs USDT (Binance)", value: "ves_parallel" },
   { label: "EUR", value: "eur" },
-  { label: "USD efectivo", value: "usd_cash" },
+  { label: "Divisas (tasa manual)", value: "usd_cash" },
+];
+
+const sellInstrumentOptions: { label: string; value: SellInstrument }[] = [
+  { label: "Divisas", value: "divisas" },
+  { label: "USDT (Binance)", value: "usdt_binance" },
 ];
 
 function buildLabel(amount: number, kind: PaymentKind) {
@@ -28,8 +33,10 @@ export default function CalculatorScreen() {
   const [amount, setAmount] = useState("20");
   const [kind, setKind] = useState<PaymentKind>("usd_divisas");
   const [cashRate, setCashRate] = useState("140");
+  const [sellUsdAmount, setSellUsdAmount] = useState("20");
+  const [sellInstrument, setSellInstrument] = useState<SellInstrument>("divisas");
   const [options, setOptions] = useState<PaymentOptionInput[]>([
-    { id: "seed-usd", label: "20 - USD divisas", amount: 20, kind: "usd_divisas" },
+        { id: "seed-usd", label: "20 - Divisas", amount: 20, kind: "usd_divisas" },
     { id: "seed-ves", label: "2500 - Bs a BCV", amount: 2500, kind: "ves_bcv" },
   ]);
   const [message, setMessage] = useState("");
@@ -42,6 +49,11 @@ export default function CalculatorScreen() {
   }, [options, parsedCashRate, rates]);
 
   const best = comparison[0];
+  const parsedSellUsdAmount = parseDecimalInput(sellUsdAmount);
+  const sellScenario = useMemo(() => {
+    if (!best || !parsedCashRate.ok || !parsedSellUsdAmount.ok) return null;
+    return simulateSellScenario(parsedSellUsdAmount.value, sellInstrument, rates, parsedCashRate.value, best.equivalentVes);
+  }, [best, parsedCashRate, parsedSellUsdAmount, sellInstrument, rates]);
 
   function addOption() {
     const parsedAmount = parseDecimalInput(amount);
@@ -93,7 +105,7 @@ export default function CalculatorScreen() {
         <Text style={[styles.label, { color: colors.mutedText }]}>Como interpretar el monto</Text>
         <SegmentedControl options={kindOptions} value={kind} onChange={setKind} />
 
-        <Text style={[styles.label, { color: colors.mutedText }]}>Tasa USD efectivo</Text>
+        <Text style={[styles.label, { color: colors.mutedText }]}>Tasa manual Divisas</Text>
         <TextInput
           value={cashRate}
           onChangeText={setCashRate}
@@ -118,6 +130,33 @@ export default function CalculatorScreen() {
           <Text style={[styles.bestText, { color: colors.successText }]}>
             Equivale a {best.equivalentVes.toFixed(2)} Bs o {best.equivalentUsd.toFixed(2)} USD.
           </Text>
+        </View>
+      ) : null}
+
+      {best ? (
+        <View style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Averigua cuánto sería si vendes tus divisas o USDT</Text>
+          <Text style={[styles.label, { color: colors.mutedText }]}>Qué vas a vender</Text>
+          <SegmentedControl options={sellInstrumentOptions} value={sellInstrument} onChange={setSellInstrument} />
+          <Text style={[styles.label, { color: colors.mutedText }]}>Monto en USD</Text>
+          <TextInput
+            value={sellUsdAmount}
+            onChangeText={setSellUsdAmount}
+            keyboardType="decimal-pad"
+            style={[
+              styles.input,
+              { backgroundColor: colors.surfaceMuted, borderColor: colors.strongBorder, color: colors.text },
+            ]}
+            placeholderTextColor={colors.softText}
+          />
+          {sellScenario ? (
+            <View style={[styles.sourcePanel, { backgroundColor: colors.infoSurface, borderColor: colors.infoBorder }]}>
+              <Text style={[styles.sourceTitle, { color: colors.infoText }]}>Resultado simulado</Text>
+              <Text style={[styles.sourceText, { color: colors.infoText }]}>Recibirías aprox: {sellScenario.receivedVes.toFixed(2)} Bs.</Text>
+              <Text style={[styles.sourceText, { color: colors.infoText }]}>Tasa usada: {sellScenario.usedRate.toFixed(2)} Bs/USD.</Text>
+              <Text style={[styles.sourceText, { color: colors.infoText }]}>Diferencia vs mejor opción: {sellScenario.differenceVsBestVes.toFixed(2)} Bs.</Text>
+            </View>
+          ) : null}
         </View>
       ) : null}
 

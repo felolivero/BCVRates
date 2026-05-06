@@ -35,3 +35,13 @@ export type PaymentComparisonResult = {
   differencePercent: number;
   isBest: boolean;
 };
+
+export type SellInstrument = "divisas" | "usdt_binance";
+
+export type SellScenarioResult = {
+  instrument: SellInstrument;
+  usdAmount: number;
+  usedRate: number;
+  receivedVes: number;
+  differenceVsBestVes: number;
+};
